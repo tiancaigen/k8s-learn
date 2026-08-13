@@ -19,55 +19,55 @@
 ## 📂 目录结构
 
 k8s-learning/
-├── 00-environment-setup/               # ✅ 基础：Minikube / kind 本地环境
-├── 01-pod/                             # ✅ 基础：Pod 生命周期、多容器模式
-├── 02-deployment/                      # ✅ 基础：Deployment 滚动更新与回滚
-├── 03-service/                         # ✅ 基础：ClusterIP / NodePort / LoadBalancer
-├── 03.5-network/                       # ⭐ 进阶：CNI 网络插件（Calico / Cilium）
-│   ├── calico-ipip-bgp/                # 网络策略与 BGP 路由反射
-│   ├── networkpolicy/                  # 细粒度网络隔离实战
-│   └── troubleshooting/                # 容器内抓包与网络排错
-├── 04-ingress/                         # ✅ 基础：Ingress Controller（Nginx Ingress）
-│   ├── gateway-api-up/                 # ⭐ Gateway API（K8s 官方下一代 Ingress）
-│   └── traefik-up/                     # ⭐ Traefik 作为 Ingress Controller
-├── 05-configmap-secret/                # ✅ 基础：配置与敏感数据管理
-├── 06-storage/                         # ✅ 基础：PV / PVC / StorageClass
-│   └── csi-up/                         # ⭐ NFS CSI / Rook Ceph 对接
-├── 06.5-disaster-recovery-up/          # ⭐ Velero 集群备份与迁移
-├── 07-helm/                            # ✅ 基础：Helm 安装与常用 Chart 部署
-│   └── custom-chart-up/                # ⭐ 编写并发布自己的 Chart
-├── 08-observability/                   # ✅ 基础：Prometheus + Grafana 监控
-│   ├── prometheus-operator-up/         # ⭐ ServiceMonitor 动态发现
-│   ├── alertmanager-up/                # ⭐ 告警分组/抑制/静默治理
-│   ├── logging-up/                     # ⭐ 集成 Loki 轻量日志
-│   └── tracing-up/                     # ⭐ Jaeger / OpenTelemetry 链路追踪
-├── 09-security/                        # ✅ 基础：RBAC（ServiceAccount / Role / ClusterRole）
-│   ├── networkpolicy-up/               # ⭐ NetworkPolicy 零信任实践
-│   ├── psa-up/                         # ⭐ Pod Security Admission
-│   └── opa-gatekeeper-up/              # ⭐ OPA 策略引擎（准入控制）
-├── 10-service-mesh-up/                 # ⭐ Istio / Linkerd 服务网格
-│   ├── traffic-management/             # 灰度发布、故障注入
-│   └── observability/                  # Kiali 可视化 + Jaeger 链路追踪
-├── 11-k8s-advanced-up/                 # ⭐ HPA / CronJob / DaemonSet / Job
-│   └── auto-scaling/                   # VPA / Cluster Autoscaler 集群弹性
-├── 12-k8s-ha-up/                       # ⭐ 核心项目：kubeadm 生产级高可用集群
-│   ├── ha-topology/                    # 多 Master + etcd 集群架构
-│   ├── loadbalancer/                   # 控制平面负载均衡（Keepalived / HAProxy）
-│   └── backup/                         # etcd 定期备份与恢复演练
-├── 13-ci-cd-integration-up/            # ⭐ Jenkins Pipeline / GitHub Actions
-│   ├── gitops/                         # ArgoCD 持续交付 + GitOps 工作流
-│   └── argo-rollouts/                  # Argo Rollouts 灰度发布
-├── 14-logging-up/                      # ⭐ EFK / ELK 日志平台搭建
-│   └── loki-stack/                     # Loki + Promtail 轻量日志方案
-├── 15-cloud-native-up/                 # ⭐ 云原生扩展
-│   ├── operator-pattern/               # Operator SDK 开发入门
-│   ├── multicluster/                   # Karmada / Kubefed 多集群联邦管理
-│   ├── serverless-knative/             # Knative Serverless 工作负载
-│   └── ai-bigdata/                     # Kubeflow / Ray / Spark on K8s
-├── scripts/                            # 辅助工具脚本
-└── notes/                              # 踩坑记录 & 面试高频问答
-    ├── troubleshooting/                # 常见故障现象与修复步骤
-    └── interview-qa/                   # 面试常考知识点梳理
+├── 00-environment-setup/                    # 基础：Minikube / kind 本地环境
+├── 01-pod/                                  # 基础：Pod 生命周期、多容器模式
+├── 02-deployment/                           # 基础：Deployment 滚动更新与回滚
+├── 03-service/                              # 基础：ClusterIP / NodePort / LoadBalancer
+├── 03.5-network/                            # ⭐ 进阶：CNI 网络插件（Calico / Cilium）
+│   ├── calico-ipip-bgp/                     # 网络策略与 BGP 路由反射
+│   ├── networkpolicy/                       # 细粒度网络隔离实战
+│   └── troubleshooting/                     # 容器内抓包与网络排错
+├── 04-ingress/                              # 基础：Ingress Controller（Nginx Ingress）
+│   ├── gateway-api-up/                      # ⭐ Gateway API（K8s 官方下一代 Ingress）
+│   └── traefik-up/                          # ⭐ Traefik 作为 Ingress Controller
+├── 05-configmap-secret/                     # 基础：配置与敏感数据管理
+├── 06-storage/                              # 基础：PV / PVC / StorageClass
+│   └── csi-up/                              # ⭐ NFS CSI / Rook Ceph 对接
+├── 06.5-disaster-recovery-up/               # ⭐ Velero 集群备份与迁移
+├── 07-helm/                                 # 基础：Helm 安装与常用 Chart 部署
+│   └── custom-chart-up/                     # ⭐ 编写并发布自己的 Chart
+├── 08-observability/                        # 基础：Prometheus + Grafana 监控
+│   ├── prometheus-operator-up/              # ⭐ ServiceMonitor 动态发现
+│   ├── alertmanager-up/                     # ⭐ 告警分组/抑制/静默治理
+│   ├── logging-up/                          # ⭐ 集成 Loki 轻量日志
+│   └── tracing-up/                          # ⭐ Jaeger / OpenTelemetry 链路追踪
+├── 09-security/                             # 基础：RBAC（ServiceAccount / Role / ClusterRole）
+│   ├── networkpolicy-up/                    # ⭐ NetworkPolicy 零信任实践
+│   ├── psa-up/                              # ⭐ Pod Security Admission
+│   └── opa-gatekeeper-up/                   # ⭐ OPA 策略引擎（准入控制）
+├── 10-service-mesh-up/                      # ⭐ Istio / Linkerd 服务网格
+│   ├── traffic-management/                  # 灰度发布、故障注入
+│   └── observability/                       # Kiali 可视化 + Jaeger 链路追踪
+├── 11-k8s-advanced-up/                      # ⭐ HPA / CronJob / DaemonSet / Job
+│   └── auto-scaling/                        # VPA / Cluster Autoscaler 集群弹性
+├── 12-k8s-ha-up/                            # ⭐ 核心项目：kubeadm 生产级高可用集群
+│   ├── ha-topology/                         # 多 Master + etcd 集群架构
+│   ├── loadbalancer/                        # 控制平面负载均衡（Keepalived / HAProxy）
+│   └── backup/                              # etcd 定期备份与恢复演练
+├── 13-ci-cd-integration-up/                 # ⭐ Jenkins Pipeline / GitHub Actions
+│   ├── gitops/                              # ArgoCD 持续交付 + GitOps 工作流
+│   └── argo-rollouts/                       # Argo Rollouts 灰度发布
+├── 14-logging-up/                           # ⭐ EFK / ELK 日志平台搭建
+│   └── loki-stack/                          # Loki + Promtail 轻量日志方案
+├── 15-cloud-native-up/                      # ⭐ 云原生扩展
+│   ├── operator-pattern/                    # Operator SDK 开发入门
+│   ├── multicluster/                        # Karmada / Kubefed 多集群联邦管理
+│   ├── serverless-knative/                  # Knative Serverless 工作负载
+│   └── ai-bigdata/                          # Kubeflow / Ray / Spark on K8s
+├── scripts/                                 # 辅助工具脚本
+└── notes/                                   # 踩坑记录 & 面试高频问答
+    ├── troubleshooting/                     # 常见故障现象与修复步骤
+    └── interview-qa/                        # 面试常考知识点梳理
 
 
 
