@@ -1,144 +1,113 @@
-# Kubernetes 学习仓库
+# Kubernetes 学习路线图
 
-从零开始通过 Minikube 在 WSL2 + Ubuntu 上搭建 Kubernetes 学习环境，记录各核心模块的实验过程与操作笔记。
+从零开始通过 kubeadm 搭建生产级集群，逐步深入核心资源、存储、监控、安全、CI/CD 及服务网格等方向，目标是具备独立运维 K8s 集群的能力。
 
-## 环境信息
 
-| 项目 | 版本 |
-|---|---|
-| 操作系统 | WSL2 + Ubuntu 24.04 |
-| 容器运行时 | Docker |
-| Kubernetes | v1.28.2 |
-| Minikube | v1.38.1 |
-| IDE | VS Code + Remote WSL |
+## 🗺️ 学习计划大纲
 
-## 完整目录结构
+| 阶段 | 基础内容 | 进阶扩展（⭐） |
+|---|---|---|
+| **一、核心基础** | Pod / Deployment / Service / Ingress / ConfigMap / Secret | 金丝雀发布 / 自定义 Helm Chart / CSI 存储 |
+| **二、生产集群搭建** | kubeadm 单 Master 集群部署（核心项目） | 3 Master + HAProxy + Keepalived 高可用 |
+| **三、应用部署与存储** | StatefulSet / PV / PVC / StorageClass | NFS CSI / Rook Ceph / Velero 备份 |
+| **四、可观测性** | Prometheus / Grafana / Alertmanager | Loki 日志 / Jaeger 链路追踪 |
+| **五、安全与权限** | RBAC / ServiceAccount | NetworkPolicy / PSA / OPA Gatekeeper |
+| **六、CI/CD** | Jenkins Pipeline | ArgoCD GitOps |
+| **七、云原生扩展** | - | Istio / VPA / Cluster Autoscaler / Knative / Operator / Karmada |
+
+
+## 📂 目录结构
 
 k8s-learning/
-├── 00-environment-setup/          # 环境搭建（WSL2 + Minikube + Docker）
-│   ├── minikube-start.sh
-│   ├── docker-install.sh
-│   └── proxy-switch.sh
-│
-├── 01-pod/                        # Pod 基础实验
-│   ├── nginx-pod.yaml
-│   ├── multi-container-pod.yaml
-│   └── pod-lifecycle-demo.yaml    # Pod 生命周期（Pending → Running → Terminating）
-│
-├── 02-deployment/                 # Deployment 控制器（滚动更新/回滚/扩缩容）
-│   ├── nginx-deployment.yaml
-│   ├── rolling-update-demo.yaml
-│   └── rollback-demo.yaml
-│
-├── 03-service/                    # Service 服务暴露（ClusterIP/NodePort/LoadBalancer）
-│   ├── nginx-service-clusterip.yaml
-│   ├── nginx-service-nodeport.yaml
-│   └── nginx-service-loadbalancer.yaml
-│
-├── 04-ingress/                    # Ingress 七层路由（域名 + 路径分发）
-│   ├── nginx-ingress.yaml
-│   └── ingress-nginx-values.yaml
-│
-├── 05-configmap-secret/           # 配置管理（ConfigMap + Secret）
-│   ├── nginx-configmap.yaml
-│   ├── mysql-secret.yaml
-│   └── deployment-with-configmap.yaml
-│
-├── 06-storage/                    # 持久化存储（PV/PVC/StorageClass/StatefulSet）
-│   ├── pv-nfs.yaml
-│   ├── pvc.yaml
-│   ├── storage-class.yaml
-│   └── mysql-statefulset.yaml
-│
-├── 07-helm/                       # Helm 包管理
-│   └── my-app/
-│       ├── Chart.yaml
-│       ├── values.yaml
-│       └── templates/
-│           ├── deployment.yaml
-│           └── service.yaml
-│
-├── 08-observability/              # 监控与可观测性（Prometheus + Grafana + Alertmanager）
-│   ├── prometheus-values.yaml
-│   ├── grafana-values.yaml
-│   ├── alertmanager-config.yaml
-│   └── service-monitor.yaml
-│
-├── 09-security/                   # 安全（RBAC + NetworkPolicy + ServiceAccount）
-│   ├── rbac-role.yaml
-│   ├── rbac-rolebinding.yaml
-│   ├── service-account.yaml
-│   └── network-policy.yaml
-│
-├── 10-service-mesh/               # 服务网格（Istio 入门）
-│   └── istio-demo.yaml
-│
-├── 11-k8s-advanced/               #  K8s 进阶（企业核心）
-│   ├── hpa.yaml                   # Horizontal Pod Autoscaler 自动扩缩容
-│   ├── cronjob.yaml               # CronJob 定时任务
-│   ├── daemonset.yaml             # DaemonSet 每个节点一个 Pod（日志/监控）
-│   ├── job.yaml                   # Job 一次性任务
-│   └── poddisruptionbudget.yaml   # PDB 主动中断预算
-│
-├── 12-k8s-ha/                     # K8s 高可用与集群管理
-│   ├── kubeadm-init.md            # kubeadm 初始化集群记录
-│   ├── master-ha.md               # 高可用控制平面搭建思路
-│   ├── etcd-backup.md             # etcd 备份与恢复
-│   └── cluster-upgrade.md         # 集群升级步骤
-│
-├── 13-ci-cd-integration/          # CI/CD 集成与 GitOps
-│   ├── jenkins-pipeline.md        # Jenkins Pipeline 与 K8s 集成
-│   ├── github-actions.yaml        # GitHub Actions 部署到 K8s
-│   ├── argocd-demo.yaml           # ArgoCD GitOps 应用
-│   └── webhook-trigger.md         # Webhook 触发自动部署
-│
-├── 14-logging/                    # 日志收集（EFK/ELK）
-│   ├── elasticsearch-values.yaml
-│   ├── filebeat-daemonset.yaml
-│   └── kibana-values.yaml
-│
-├── 15-cloud-native/               # 云原生生态扩展
-│   ├── serverless.md              # Knative / OpenFaaS 入门
-│   ├── operator-pattern.md        # Operator 模式理解
-│   └── service-catalog.md         # Service Catalog 服务目录
-│
-├── scripts/                       # 辅助脚本
-│   ├── deploy-all.sh
-│   └── clean-all.sh
-│
-└── notes/                         # 笔记与踩坑记录
-    ├── troubleshooting.md
-    ├── k8s-cheatsheet.md
-    └── interview-qa.md            # 面试问答整理
+├── 00-environment-setup/               # ✅ 基础：Minikube / kind 本地环境
+├── 01-pod/                             # ✅ 基础：Pod 生命周期、多容器模式
+├── 02-deployment/                      # ✅ 基础：Deployment 滚动更新与回滚
+├── 03-service/                         # ✅ 基础：ClusterIP / NodePort / LoadBalancer
+├── 03.5-network/                       # ⭐ 进阶：CNI 网络插件（Calico / Cilium）
+│   ├── calico-ipip-bgp/                # 网络策略与 BGP 路由反射
+│   ├── networkpolicy/                  # 细粒度网络隔离实战
+│   └── troubleshooting/                # 容器内抓包与网络排错
+├── 04-ingress/                         # ✅ 基础：Ingress Controller（Nginx Ingress）
+│   ├── gateway-api-up/                 # ⭐ Gateway API（K8s 官方下一代 Ingress）
+│   └── traefik-up/                     # ⭐ Traefik 作为 Ingress Controller
+├── 05-configmap-secret/                # ✅ 基础：配置与敏感数据管理
+├── 06-storage/                         # ✅ 基础：PV / PVC / StorageClass
+│   └── csi-up/                         # ⭐ NFS CSI / Rook Ceph 对接
+├── 06.5-disaster-recovery-up/          # ⭐ Velero 集群备份与迁移
+├── 07-helm/                            # ✅ 基础：Helm 安装与常用 Chart 部署
+│   └── custom-chart-up/                # ⭐ 编写并发布自己的 Chart
+├── 08-observability/                   # ✅ 基础：Prometheus + Grafana 监控
+│   ├── prometheus-operator-up/         # ⭐ ServiceMonitor 动态发现
+│   ├── alertmanager-up/                # ⭐ 告警分组/抑制/静默治理
+│   ├── logging-up/                     # ⭐ 集成 Loki 轻量日志
+│   └── tracing-up/                     # ⭐ Jaeger / OpenTelemetry 链路追踪
+├── 09-security/                        # ✅ 基础：RBAC（ServiceAccount / Role / ClusterRole）
+│   ├── networkpolicy-up/               # ⭐ NetworkPolicy 零信任实践
+│   ├── psa-up/                         # ⭐ Pod Security Admission
+│   └── opa-gatekeeper-up/              # ⭐ OPA 策略引擎（准入控制）
+├── 10-service-mesh-up/                 # ⭐ Istio / Linkerd 服务网格
+│   ├── traffic-management/             # 灰度发布、故障注入
+│   └── observability/                  # Kiali 可视化 + Jaeger 链路追踪
+├── 11-k8s-advanced-up/                 # ⭐ HPA / CronJob / DaemonSet / Job
+│   └── auto-scaling/                   # VPA / Cluster Autoscaler 集群弹性
+├── 12-k8s-ha-up/                       # ⭐ 核心项目：kubeadm 生产级高可用集群
+│   ├── ha-topology/                    # 多 Master + etcd 集群架构
+│   ├── loadbalancer/                   # 控制平面负载均衡（Keepalived / HAProxy）
+│   └── backup/                         # etcd 定期备份与恢复演练
+├── 13-ci-cd-integration-up/            # ⭐ Jenkins Pipeline / GitHub Actions
+│   ├── gitops/                         # ArgoCD 持续交付 + GitOps 工作流
+│   └── argo-rollouts/                  # Argo Rollouts 灰度发布
+├── 14-logging-up/                      # ⭐ EFK / ELK 日志平台搭建
+│   └── loki-stack/                     # Loki + Promtail 轻量日志方案
+├── 15-cloud-native-up/                 # ⭐ 云原生扩展
+│   ├── operator-pattern/               # Operator SDK 开发入门
+│   ├── multicluster/                   # Karmada / Kubefed 多集群联邦管理
+│   ├── serverless-knative/             # Knative Serverless 工作负载
+│   └── ai-bigdata/                     # Kubeflow / Ray / Spark on K8s
+├── scripts/                            # 辅助工具脚本
+└── notes/                              # 踩坑记录 & 面试高频问答
+    ├── troubleshooting/                # 常见故障现象与修复步骤
+    └── interview-qa/                   # 面试常考知识点梳理
+
 
 
 
 ## 🛠️ 技术栈
 
-| 类别 | 技术 | 版本 | 用途 |
-|---|---|---|---|
-| **核心编排** | Kubernetes | v1.28.2 | 容器编排调度 |
-| | Minikube | v1.38.1 | 本地 K8s 开发集群 |
-| | Docker | 29.1.3 | 容器运行时 |
-| | kubectl | v1.28.2 | K8s 命令行管理工具 |
-| **存储与网络** | Helm | - | K8s 应用包管理 |
-| | Ceph / NFS | - | 持久化存储后端 |
-| | Ingress-Nginx | - | 七层流量路由 |
-| **可观测性** | Prometheus | - | 指标采集与监控告警 |
-| | Grafana | - | 监控数据可视化 |
-| | Alertmanager | - | 告警分组与抑制 |
-| | EFK/ELK | - | 日志收集与分析 |
-| **安全** | RBAC | - | 权限控制 |
-| | NetworkPolicy | - | 网络策略 |
-| | ServiceAccount | - | Pod 身份管理 |
-| **CI/CD & GitOps** | Jenkins | - | CI/CD 流水线 |
-| | GitHub Actions | - | 自动化构建与部署 |
-| | ArgoCD | - | GitOps 声明式持续部署 |
-| **云原生扩展** | Istio | - | 服务网格（流量管理/可观测性） |
-| | Knative | - | Serverless 工作负载 |
-| | Operator | - | K8s 应用自动化管理 |
-| **辅助工具** | kubectx / kubens | - | 快速切换集群与命名空间 |
-| | k9s | - | 终端 K8s 集群管理 |
-| | yq | - | YAML 处理工具 |
+### ✅ 基础
 
+| 类别 | 技术 | 用途 |
+|---|---|---|
+| **编排** | Kubernetes v1.28.2 | 容器编排调度 |
+| **部署工具** | kubeadm | 生产级集群部署 |
+| **本地环境** | Minikube / kind | 本地开发测试 |
+| **容器运行时** | Docker / containerd | 容器运行环境 |
+| **命令行工具** | kubectl | K8s 集群管理 |
+| **服务暴露** | Nginx Ingress Controller | 七层流量路由 |
+| **服务发现** | CoreDNS | 集群内部 DNS 解析 |
+| **包管理** | Helm | K8s 应用包管理 |
+| **监控** | Prometheus + Grafana + Alertmanager | 指标采集、可视化、告警 |
+| **权限** | RBAC | 权限控制与最小权限原则 |
+| **CI/CD** | Jenkins | 自动化构建与部署 |
+
+
+### ⭐ 进阶
+
+| 类别 | 技术 | 用途 |
+|---|---|---|
+| **网络** | Calico / Cilium | CNI 网络插件与 NetworkPolicy |
+| **API 网关** | Gateway API / Traefik | 下一代 Ingress 与七层代理 |
+| **服务网格** | Istio / Linkerd | 灰度发布、流量管理、可观测性 |
+| **存储** | Rook Ceph / NFS CSI | 云原生分布式存储与动态供给 |
+| **备份** | Velero | 集群备份与迁移 |
+| **日志** | Loki / EFK | 轻量日志聚合与集中管理 |
+| **链路追踪** | Jaeger / OpenTelemetry | 分布式调用链追踪 |
+| **安全** | OPA Gatekeeper / PSA | 策略引擎与 Pod 安全标准 |
+| **GitOps** | ArgoCD | 声明式持续交付 |
+| **灰度发布** | Argo Rollouts | 渐进式交付与金丝雀发布 |
+| **自动伸缩** | VPA / Cluster Autoscaler | 垂直伸缩与集群节点自动伸缩 |
+| **Serverless** | Knative | 云原生 Serverless 工作负载 |
+| **多集群管理** | Karmada | 跨集群统一调度与联邦管理 |
+| **AI/大数据** | Kubeflow / Ray / Spark on K8s | 云原生 AI 与大数据平台 |
+| **辅助工具** | kubectx / k9s / yq | 集群切换、终端管理、YAML 处理 |
 
