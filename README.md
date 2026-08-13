@@ -18,6 +18,7 @@
 
 ## 📂 目录结构
 
+```
 k8s-learning/
 ├── 00-environment-setup/                    # 基础：Minikube / kind 本地环境
 ├── 01-pod/                                  # 基础：Pod 生命周期、多容器模式
@@ -68,6 +69,7 @@ k8s-learning/
 └── notes/                                   # 踩坑记录 & 面试高频问答
     ├── troubleshooting/                     # 常见故障现象与修复步骤
     └── interview-qa/                        # 面试常考知识点梳理
+```
 
 
 
