@@ -113,3 +113,77 @@ k8s-learning/
 | **AI/大数据** | Kubeflow / Ray / Spark on K8s | 云原生 AI 与大数据平台 |
 | **辅助工具** | kubectx / k9s / yq | 集群切换、终端管理、YAML 处理 |
 
+
+
+。。。。。。。。。。。。。。。。。。。。。。。。。。。
+
+
+## 🧩 环境排障记录
+
+### 1️⃣ 问题一：kubeadm init 超时 — pause 镜像拉取失败
+
+**现象**
+- `kubeadm init` 卡在 `Waiting for a healthy API server`，4 分钟后超时退出
+- 报错：`context deadline exceeded`、`dial tcp ... connection refused`
+- `sudo crictl ps -a` 无任何控制平面容器
+
+**根因**
+- `registry.k8s.io/pause:3.10.1` 镜像无法拉取
+- containerd 的 `sandbox_image` 配置虽改为阿里云地址，但未生效
+- kubelet 的 `--pod-infra-container-image` 参数优先级更高，仍指向官方源
+
+**解决方案**
+```bash
+# 手动拉取阿里云 pause 镜像并打上官方标签
+sudo crictl pull registry.aliyuncs.com/google_containers/pause:3.10
+sudo ctr -n k8s.io image tag registry.aliyuncs.com/google_containers/pause:3.10 registry.k8s.io/pause:3.10.1
+
+# 重置并重新初始化
+sudo kubeadm reset -f
+sudo rm -rf /etc/kubernetes /var/lib/etcd
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --image-repository=registry.aliyuncs.com/google_containers
+
+### 2️⃣ 问题二：Flannel 网络插件 Pod 反复 CrashLoopBackOff
+
+**现象**
+- 节点 `NotReady`，Flannel Pod 反复重启
+- 状态：`ImagePullBackOff` → `ErrImagePull` → `RunContainerError` → `CrashLoopBackOff`
+- 最终报错：`exec: "/opt/bin/install-conf": no such file or directory`
+
+**根因**
+1. `ghcr.io` 被墙，Flannel 默认镜像无法拉取
+2. 镜像标签与 DaemonSet 期望不一致
+3. Flannel 镜像中不存在 `/opt/bin/install-conf` 脚本
+
+**解决方案**
+```bash
+# 1. 从 DaoCloud 镜像源拉取可用版本并打标签
+sudo crictl pull m.daocloud.io/docker.io/flannel/flannel:v0.25.7
+sudo ctr -n k8s.io image tag m.daocloud.io/docker.io/flannel/flannel:v0.25.7 docker.io/flannel/flannel:v0.25.7
+sudo ctr -n k8s.io image tag m.daocloud.io/docker.io/flannel/flannel:v0.25.7 ghcr.io/flannel-io/flannel:v0.28.9
+
+# 2. 导入本地 v0.28.5 tar 包并打标签
+sudo ctr -n k8s.io image import /home/k/flannel-v0.28.5.tar
+sudo ctr -n k8s.io image tag ghcr.io/flannel-io/flannel:v0.28.5 docker.io/flannel/flannel:v0.28.5
+sudo ctr -n k8s.io image tag ghcr.io/flannel-io/flannel:v0.28.5 ghcr.io/flannel-io/flannel:v0.28.9
+
+# 3. 修改 DaemonSet，用 cp 命令替代不存在的 install-conf 脚本
+kubectl patch daemonset kube-flannel-ds -n kube-flannel --type='json' -p='[
+  {"op": "replace", "path": "/spec/template/spec/initContainers/1/command", "value": ["/bin/sh", "-c", "cp /etc/kube-flannel/cni-conf.json /etc/cni/net.d/10-flannel.conflist"]}
+]'
+
+# 4. 删除 Pod，让 DaemonSet 重建
+kubectl delete pod -n kube-flannel --all --force --grace-period=0
+```
+
+**最终运行的版本**
+- DaemonSet 实际使用的镜像：`docker.io/flannel/flannel:v0.28.5`（来自本地导入的 `flannel-v0.28.5.tar`）
+- `ghcr.io/flannel-io/flannel:v0.28.9` 标签指向的是 `v0.28.5` 的镜像内容
+- `v0.25.7` 仅作为备选保留在本地
+
+**经验教训**
+- 优先使用国内镜像源（如 `m.daocloud.io`）拉取被墙的镜像
+- 镜像标签必须与 DaemonSet 期望一致，否则会报 `ErrImagePull`
+- Init 容器报 `no such file or directory` 时，可直接用 `cp` 命令替代
+- 修改 DaemonSet（`kubectl patch`）比反复 `kubeadm reset` 更高效
+- 导出/导入镜像 tar 包是离线环境部署的可靠方法，可用 `ctr image import` 直接导入
