@@ -50,7 +50,7 @@
 ### 扩展技能
 
 - **HPA 弹性伸缩**：基于 CPU 使用率自动扩缩容 WordPress Pod
-- **Helm 部署**：使用 Bitnami Charts 一键部署 WordPress + MariaDB
+- **Helm 部署**：使用 Bitnami Charts 一键部署 WordPress + MariaDB(未实现)
 - **持久化存储验证**：数据库 Pod 重启后数据不丢失
 - **port-forward 调试**：绕过 NodePort 网络策略，快速本地访问验证
 - **kubeadm 全手动搭建**：完整记录环境排障（7 个典型问题）
@@ -87,6 +87,116 @@
 4. **NodePort 访问踩坑**：外部访问不通优先排查代理设置，而非直接归因于 K8s 配置
 5. **port-forward 是调试神器**：绕过网络策略，快速验证应用是否正常
 6. **HPA 依赖 resources.requests**：不设置 requests，HPA 永远显示 `<unknown>`
+
+启动命令查收：
+```markdown
+## ✅ 验证命令清单
+
+以下命令用于快速验证 `wp-mysql-stack` 项目是否正常运行。
+
+### 📋 前置条件
+
+```bash
+# 确保 kubectl 已连接集群
+kubectl cluster-info
+```
+
+### 1️⃣ 核心资源状态检查
+
+```bash
+# 查看命名空间下所有资源
+kubectl get all -n wp-mysql-stack
+
+# 期望结果：Pod 全部 Running，Deployment/StatefulSet 就绪
+```
+
+### 2️⃣ 持久化存储检查
+
+```bash
+# 查看 PVC 状态
+kubectl get pvc -n wp-mysql-stack
+
+# 查看 PV 状态
+kubectl get pv
+
+# 期望结果：PVC 和 PV 状态均为 Bound
+```
+
+### 3️⃣ WordPress 访问测试
+
+```bash
+# 获取 NodePort
+kubectl get svc wp-web -n wp-mysql-stack
+
+# 访问测试（替换 IP 和端口）
+curl -I http://  :
+
+# 期望结果：HTTP/1.1 200 OK 或 302 Found
+```
+
+### 4️⃣ MySQL 数据验证
+
+```bash
+# 进入 MySQL Pod
+kubectl exec -it wp-db-0 -n wp-mysql-stack -- bash
+
+# 在容器内执行
+mysql -u root -p
+
+# 输入密码后执行 SQL
+SHOW DATABASES;
+USE wordpress;
+SHOW TABLES;
+SELECT * FROM wp_posts LIMIT 5;
+EXIT;
+exit
+
+# 期望结果：wordpress 数据库存在，wp_posts 表有数据
+```
+
+### 5️⃣ HPA 弹性伸缩检查
+
+```bash
+# 查看 HPA 状态和事件
+kubectl describe hpa wp-web-hpa -n wp-mysql-stack
+
+# 期望结果：Metrics 显示 CPU 利用率，Events 中有 SuccessfulRescale
+```
+
+### 6️⃣ 节点状态检查
+
+```bash
+# 查看所有节点状态
+kubectl get nodes
+
+# 期望结果：所有节点 Ready
+```
+
+### 🚀 一键快速验证
+
+```bash
+kubectl get all -n wp-mysql-stack && curl -I http://192.168.2.10:32074
+```
+
+### 📊 验收标准
+
+| 检查项 | 预期结果 | 命令 |
+|--------|----------|------|
+| Pod 状态 | 全部 `Running`，READY `1/1` | `kubectl get pods -n wp-mysql-stack` |
+| WordPress 访问 | HTTP 状态码 `200` 或 `302` | `curl -I http://<NodeIP>:<NodePort>` |
+| MySQL 数据 | `wp_posts` 表存在且有数据 | `kubectl exec -it wp-db-0 -n wp-mysql-stack -- mysql -u root -p -e "SELECT * FROM wordpress.wp_posts LIMIT 5;"` |
+| PVC 绑定 | 状态 `Bound` | `kubectl get pvc -n wp-mysql-stack` |
+| HPA 状态 | `AbleToScale True`，`ScalingActive True` | `kubectl describe hpa wp-web-hpa -n wp-mysql-stack` |
+| 节点状态 | 全部 `Ready` | `kubectl get nodes` |
+
+---
+```
+
+
+
+
+
+
 
 
 ## 🙏 致谢

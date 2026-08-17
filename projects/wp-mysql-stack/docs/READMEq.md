@@ -222,3 +222,212 @@ kubectl patch deployment wp-web -n wp-mysql-stack --type='json' -p='[
 - 必须为容器显式设置 CPU/内存请求（requests）和限制（limits），否则 HPA 无法工作
 - 设置 requests 时需根据实际业务负载合理规划，过低会导致节点资源超卖，过高会造成资源浪费
 - 可通过 `kubectl describe hpa` 查看 HPA 事件，快速定位 `<unknown>` 的具体原因
+
+
+
+
+第二次登录：
+```markdown
+# 第二次登录：Kubernetes 集群搭建常见问题排查记录
+
+本文档记录了在从零搭建 Kubernetes 集群过程中遇到的三个核心问题及其解决方案，涵盖节点资源管理、网络插件配置和容器镜像拉取三个方面。
+
+
+## 问题一：Swap 分区未关闭
+
+### 现象
+
+- `kubectl get nodes` 显示节点状态为 `NotReady`
+- `systemctl status kubelet` 报错：
+  ```
+  running with swap on is not supported, please disable swap
+  ```
+
+### 本质原因
+
+Kubernetes 为了保证 Pod 运行的**确定性**和**稳定性**，要求**完全掌控节点的物理内存**。Linux 的 Swap（交换分区/文件）会让这种掌控失效。
+
+### 为什么 Kubernetes 必须关闭 Swap？
+
+| 问题 | 说明 |
+|------|------|
+| **调度决策被误导** | K8s 调度器根据 `requests.memory` 决定 Pod 调度位置。Swap 启用时，节点物理内存不足会触发内存交换，调度器看到的是“物理内存 + Swap”，误以为资源充足，实际数据已在磁盘中，性能急剧下降。 |
+| **OOM 驱逐不准确** | 节点内存耗尽时 Linux 内核触发 OOM Killer。K8s 的 QoS 机制希望优先杀非核心 Pod，但 Swap 介入后，内核可能误杀核心业务 Pod。 |
+| **内存限制失效** | `limits.memory` 通过 cgroups 限制 Pod 内存。Swap 允许 Pod 将内存数据交换到磁盘，绕过 cgroups 限制，造成“限而不死”的假象。 |
+
+### 解决方案
+
+在所有节点上执行以下命令：
+
+```bash
+# 临时关闭 Swap
+sudo swapoff -a
+
+# 永久禁用 Swap（注释 /etc/fstab 中的 swap 挂载项）
+sudo sed -i '/swap/s/^/#/' /etc/fstab
+
+# 验证是否已关闭
+free -h | grep Swap
+# 应显示 Swap: 0B 0B 0B
+```
+
+执行后重启 kubelet 验证：
+
+```bash
+sudo systemctl restart kubelet
+kubectl get nodes
+```
+
+
+## 问题二：Flannel 健康检查探针失败（404）
+
+### 现象
+
+- `kubectl get pods -n kube-flannel` 显示 `0/1 Running`
+- `kubectl describe pod` 报错：
+  ```
+  Readiness probe failed: HTTP probe failed with statuscode: 404
+  ```
+
+### 本质原因
+
+Flannel 主容器实际已正常运行（日志显示 `bootstrap done`，网络配置已写入 `/run/flannel/subnet.env`），但 **Readiness Probe（就绪探针）配置的 HTTP 路径在新版本中已移除**，导致探针失败，Pod 被标记为“未就绪”。
+
+### 为什么会出现这个问题？
+
+这是典型的**配置版本脱节**问题：
+
+- **第一次部署**：拉取的是 Flannel 旧版本（如 v0.24.x），该版本存在 `/readyz` 端点，探针通过。
+- **第二次启动**：节点没有缓存旧镜像，kubelet 拉取了**最新版本**（如 v0.28.x）。新版本中开发者已移除 `/readyz` 端点，只保留 `/healthz`。
+- 结果：YAML 配置文件仍指向 `/readyz`，新版镜像没有该路径，返回 404。
+
+### 关键点
+
+这只是一个**配置与镜像版本不一致导致的误报**，Flannel 的网络功能本身正常（Pod 能获得 IP，节点间通信正常）。
+
+### 解决方案
+
+将 `readinessProbe` 从 `httpGet` 改为 `tcpSocket`，只检查端口是否监听，不再依赖具体 HTTP 路径：
+
+```bash
+kubectl patch daemonset kube-flannel-ds -n kube-flannel --type='json' -p='[
+  {
+    "op": "replace",
+    "path": "/spec/template/spec/containers/0/readinessProbe",
+    "value": {
+      "failureThreshold": 3,
+      "tcpSocket": {
+        "port": 8081
+      },
+      "initialDelaySeconds": 5,
+      "periodSeconds": 10,
+      "successThreshold": 1,
+      "timeoutSeconds": 1
+    }
+  }
+]'
+```
+
+> `tcpSocket` 方式检查 8081 端口是否可连接，只要端口在监听即视为 Pod 就绪，版本升级时更稳定。
+
+验证修复：
+
+```bash
+kubectl get pods -n kube-flannel
+# 应显示 1/1 Running
+```
+
+
+## 问题三：镜像拉取失败（ImagePullBackOff）
+
+### 现象
+
+- 测试 Pod 状态为 `ImagePullBackOff`
+- `kubectl describe pod` 报错：
+  ```
+  Failed to pull image: proxyconnect tcp: dial tcp 192.168.2.1:10808: connect: connection refused
+  ```
+
+### 本质原因
+
+节点系统环境变量设置了代理（`HTTP_PROXY` / `HTTPS_PROXY`），指向 `192.168.2.1:10808`，但该代理服务不可达。所有拉取 Docker Hub 镜像的请求都被“截胡”到代理，然后被拒绝。
+
+### 为什么配置了镜像源“没用”？
+
+系统级 `HTTP_PROXY` **优先级高于**容器运行时（containerd/docker）的镜像源配置。即使配置了阿里云镜像加速，所有流量也会先被代理拦截，导致镜像源配置失效。
+
+### 解决方案
+
+**临时方案**（让集群先跑起来）：
+
+```bash
+# 方式一：确保代理服务正常运行
+# 或
+
+# 方式二：临时移除系统代理（如果不需要代理）
+unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+# 从 /etc/environment 中删除代理相关行
+```
+
+**长期方案**（推荐，彻底解决）：
+
+移除系统级代理，改为在容器运行时中配置国内镜像加速器。
+
+#### 对于 containerd：
+
+编辑 `/etc/containerd/config.toml`：
+
+```toml
+[plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+    endpoint = ["https://docker.mirrors.ustc.edu.cn"]
+    # 也可使用阿里云镜像加速（需注册获取个人加速地址）
+    # endpoint = ["https://<你的ID>.mirror.aliyuncs.com"]
+```
+
+重启 containerd 和 kubelet：
+
+```bash
+sudo systemctl restart containerd
+sudo systemctl restart kubelet
+```
+
+#### 对于 Docker：
+
+编辑 `/etc/docker/daemon.json`：
+
+```json
+{
+  "registry-mirrors": ["https://docker.mirrors.ustc.edu.cn"]
+}
+```
+
+重启 Docker 和 kubelet：
+
+```bash
+sudo systemctl restart docker
+sudo systemctl restart kubelet
+```
+
+
+## 附录：Flannel 是什么？
+
+Flannel 是 Kubernetes 的 CNI（容器网络接口）网络插件，核心职责：
+
+1. **为每个 Pod 分配全局唯一的 IP 地址**，避免 IP 冲突
+2. **打通不同节点上 Pod 之间的网络通信**，通过 VXLAN 或 host-gw 等方式建立跨主机网络隧道
+
+> 没有 Flannel，Node1 上的 `wp-web` Pod 和 Node2 上的 `wp-db` Pod 之间无法通信。通过 Service 名称访问数据库，底层依赖的就是 Flannel 提供的跨主机网络能力。
+
+
+## 问题总结
+
+| 问题 | 领域 | 本质 | 解决方案 |
+|------|------|------|----------|
+| **Swap 未关闭** | 节点资源管理 | K8s 要求绝对掌控内存，Swap 干扰调度和驱逐准确性 | `sudo swapoff -a` + 注释 fstab |
+| **Flannel 探针 404** | 网络插件 | YAML 中的 `/readyz` 路径与新版本镜像不匹配 | 改为 `tcpSocket` 探针 |
+| **ImagePullBackOff** | 容器运行时 | 系统代理拦截拉取请求，但代理不通 | 移除代理 + 配置国内镜像源 |
+
+三个问题分别覆盖了**系统层**、**网络层**和**容器运行时层**，是 Kubernetes 集群从下到上核心链路的常见故障点。
+```
+
